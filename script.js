@@ -9,6 +9,8 @@ const chatWindow = document.getElementById("chatWindow");
 const userInput = document.getElementById("userInput");
 
 const STORAGE_KEY = "selectedProductIds";
+const WORKER_API_URL =
+  "https://loreal-routine-builder.44daniellee.workers.dev/";
 
 let allProducts = [];
 let currentDisplayedProducts = [];
@@ -239,15 +241,10 @@ function renderSelectedProducts() {
 
 /* Send messages to OpenAI and return the assistant text */
 async function getOpenAIResponse(messages) {
-  if (!api_key) {
-    throw new Error("API key not found. Check secrets.js.");
-  }
-
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch(WORKER_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${api_key}`,
     },
     body: JSON.stringify({
       model: "gpt-4o",
@@ -259,13 +256,18 @@ async function getOpenAIResponse(messages) {
   const data = await response.json();
 
   if (!response.ok) {
-    const errorMessage = data.error?.message || "OpenAI request failed.";
+    const errorMessage = data.error?.message || "Worker request failed.";
     throw new Error(errorMessage);
+  }
+
+  /* Accept either OpenAI-style response or a simplified worker response shape */
+  if (typeof data.reply === "string" && data.reply.trim()) {
+    return data.reply;
   }
 
   const content = data.choices?.[0]?.message?.content;
   if (!content) {
-    throw new Error("No response text returned by OpenAI.");
+    throw new Error("No response text returned by the worker.");
   }
 
   return content;
